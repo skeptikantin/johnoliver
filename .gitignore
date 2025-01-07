@@ -6,5 +6,6 @@
 .quarto
 data/*
 assets/*
+johnoliver.Rproj
 get_data.sh
 pipeline.R
