@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 I recently stumbled across a very old John Oliver episode from Season 1. The pace of the episode was so noticeably different that I initially thought I had YouTube on half speed. Since I hadn't - my interest was piqued: has John Oliver become more fast-paced over time?
 
-Obvious questioN. How can we measure that? For a little analysis, it's a rather straightforward linguistics/phonetics task: we can measure word per minute or syllables per second and average duration of pauses, all of which will probably somewhat be useful to visualize the auditory impression of John's faster speech style.
+Obvious question: how can we measure that? For a little analysis, it's a rather straightforward linguistics/phonetics task: we can measure word per minute or syllables per second and average duration of pauses, all of which will probably somewhat be useful to visualize the auditory impression of John's faster speech style.
 
 ### The data
 
