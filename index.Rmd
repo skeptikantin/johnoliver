@@ -1,0 +1,40 @@
+---
+title: "Last Week Tonight"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    #code_folding: hide
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### John Oliver
+
+I recently stumbled across a very old John Oliver episode from Season 1. The pace of the episode was so noticeably different that I initially thought I had YouTube on half speed. Since I hadn't - my interest was piqued: has John Oliver become more fast-paced over time?
+
+Obvious questioN. How can we measure that? For a little analysis, it's a rather straightforward linguistics/phonetics task: we can measure word per minute or syllables per second and average duration of pauses, all of which will probably somewhat be useful to visualize the auditory impression of John's faster speech style.
+
+### The data
+
+So for this little analysis, I fetched a [list of episodes](https://en.wikipedia.org/wiki/List_of_Last_Week_Tonight_with_John_Oliver_episodes) and the YouTube links of the main segments. I then fetched the audio, closed-captions, and some youtube meta data such as duration, views and likes (using [yt-dlp](https://github.com/yt-dlp/yt-dlp)). To measure word duration, I used the forced-aligner [gentle](https://github.com/lowerquality/gentle), which aligns audio and subtitles, and determines, albeit somewhat crudely, the beginning and end of each word, from which we can also measure pauses.
+
+Two issues: First, John Oliver frequently features clips with speech from other people, which would have to be removed. To assess, I manually filtered other people's text from the files for 20 episodes, and, if anything, the reported effects would be more pronounced, hence I decided using all data is good enough for the current purpose, and treat other people's speech as noise - as lots of data tends to make such problems be much less influential. Second, 
+
+
+```{r cars}
+summary(cars)
+```
+
+### Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
