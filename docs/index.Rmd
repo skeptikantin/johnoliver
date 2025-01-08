@@ -1,27 +1,69 @@
 ---
-title: "Last Week Tonight"
+title: "John Oliver's speech rate over time"
 date: "`r Sys.Date()`"
 output:
   html_document:
-    theme: cosmo
-    code_folding: hide
-    toc: yes
-    toc_float:
-      collapsed: true
+  theme: cosmo
+code_folding: hide
+toc: yes
+toc_float:
+  collapsed: true
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+ggplot2::theme_set(suzR::theme_suzR())
+
+library(tidyverse)
+
+alignments <- read_tsv('../data/alignments.csv')
+episodes <- read_tsv('../data/episodes.csv')
+
 ```
 
-### John Oliver
+### The mystery
 
-I recently stumbled across a very old John Oliver episode from Season 1. The pace of the episode was so noticeably different that I initially thought I had YouTube on half speed. Since I hadn't - my interest was piqued: has John Oliver become more fast-paced over time?
+I recently stumbled across an old John Oliver episode from Season 1. The pace of the episode was so noticeably slower as if I had YouTube on half speed. My interest was piqued: has John Oliver become more fast-paced over time?
 
-Obvious question: how can we measure that? For a little analysis, it's a rather straightforward linguistics/phonetics task: we can measure word per minute or syllables per second and average duration of pauses, all of which will probably somewhat be useful to visualize the auditory impression of John's faster speech style.
+That's a rather straightforward corpus linguistic task: we can measure speech rate in words per minute or syllables per second, and look at the average duration of pauses - metrics which will probably approximate John's speech style space over time.
 
 ### The data
 
-So for this little analysis, I fetched a [list of episodes](https://en.wikipedia.org/wiki/List_of_Last_Week_Tonight_with_John_Oliver_episodes) and the YouTube links of the main segments. I then fetched the audio, closed-captions, and some youtube meta data such as duration, views and likes (using [yt-dlp](https://github.com/yt-dlp/yt-dlp)). To measure word duration, I used the forced-aligner [gentle](https://github.com/lowerquality/gentle), which aligns audio and subtitles, and determines, albeit somewhat crudely, the beginning and end of each word, from which we can also measure pauses.
+From a [list of main segments of Last Week Tonight](https://en.wikipedia.org/wiki/List_of_Last_Week_Tonight_with_John_Oliver_episodes) and their YouTube links, I fetched the audio, auto-generated subtitles, and some meta data such as file duration and views (using [yt-dlp](https://github.com/yt-dlp/yt-dlp)). [Gentle](https://github.com/lowerquality/gentle) aligns the audio to the subtitles and determine the beginning and end of each word. Gentle was the only forced-aligner I could find that works reasonably reliably on files larger than a few seconds - while this comes at the cost of accuracy, given the amount of data for the question to be answered, it's a workable trade-off.
 
 Two issues: First, John Oliver frequently features clips with speech from other people, which would have to be removed. To assess, I manually filtered other people's text from the files for 20 episodes, and, if anything, the reported effects would be more pronounced, hence I decided using all data is good enough for the current purpose, and treat other people's speech as noise - as lots of data tends to make such problems be much less influential. Second, 
+
+```{r inspect}
+alignments |> 
+  filter(ytid == '_-0J49_9lwc') |> 
+  head(8) |> 
+  knitr::kable(digits = 3, caption = "Forced-alignment for one file")
+```
+```{r}
+# For wpm on episodes:
+episodes <- episodes |> 
+  mutate(viewers_m = viewers * 1000000,
+         wpm = wrds/length * 60,
+         spm = syls/length,
+         vlr = likes/views,
+         vcr = comms/views)
+
+## TV viewers per episode
+episodes |> 
+  filter(!is.na(viewers_m)) |> 
+  select(ytdate, ep_id, season, viewers_m) |> 
+  ggplot(aes(ytdate, viewers_m)) +
+  geom_point(aes(color = season)) +
+  #geom_line(group = 1) +
+  geom_smooth(method = 'loess') +
+  labs(title = 'Last Week Tonight: Popularity',
+       subtitle = 'TV viewer rise and decline',
+       x = 'Year',
+       y = 'TV viewers (millions)') +
+  scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
+  guides(colour = guide_legend(nrow = 1))
+
+```
+

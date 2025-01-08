@@ -4,8 +4,7 @@
 .httr-oauth
 .DS_Store
 .quarto
-data/*
-assets/*
+src/*
 johnoliver.Rproj
 get_data.sh
 pipeline.R
