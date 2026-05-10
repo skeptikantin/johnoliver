@@ -27,8 +27,8 @@ alignments <- alignments |>
          dur = end - beg) |> 
   mutate(syl = nsyllable::nsyllable(word)) |> 
   mutate(syl_per_sec = (1/dur)*syl) |> 
-  mutate(roll_mean = zoo::rollmean(syl_per_sec, 4, na.pad = T),
-         roll_median = zoo::rollmedian(syl_per_sec, 4, na.pad = T),
+  mutate(roll_mean = zoo::rollmean(syl_per_sec, 10, na.pad = T),
+         roll_median = zoo::rollmedian(syl_per_sec, 10, na.pad = T),
          roll_mn = zoo::rollapply(syl_per_sec, width=3, FUN=function(x) mean(x, na.rm=TRUE), by=1, by.column=TRUE, partial=TRUE, fill=NA, align="right"))
 
 # segment summary
@@ -53,17 +53,243 @@ alignments_summ <- alignments |>
 alignments |> 
   ungroup(ep_id) |> 
   group_by(season) |>
-  filter(word == "government") |> 
+  filter(word == "people") |> 
   summarize(dur_avg = mean(dur, na.rm = TRUE),
             freq = n()) |> 
   ggplot(aes(season, dur_avg)) +
   geom_point()
 
+# For wpm on episodes:
+episodes <- episodes |> 
+  mutate(viewers_m = viewers * 1000000,
+         wpm = wrds/length * 60,
+         spm = syls/length,
+         vlr = likes/views,
+         vcr = comms/views)
+
 # Step 4: Visualizations --------------------------------------------------
 
-theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-theme_set(suzR::theme_suzR())
-theme_replace(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+## Words per minute per episode
+episodes |> 
+  filter(!is.na(wpm)) |> 
+  group_by(season) |> 
+  summarise(median(wpm),
+            median(length))
+episodes |> 
+  filter(!is.na(wpm)) |> 
+  group_by(period) |> 
+  summarise(mean(wpm),
+            median(length))
+
+episodes |> 
+  filter(!(is.na(wpm))) |> 
+  filter(ytdate != "2021-08-16") |> 
+  #group_by(season) |>
+  #slice_sample(n = 10) |>
+  #ungroup() |> 
+  group_by(period) |> 
+  select(wpm, ytdate, wrds, length, period) |> 
+  ggplot(aes(ytdate, wpm, color = length)) +
+  geom_point(alpha = 1, size = 3) +
+  #geom_smooth(aes(group = period), se = FALSE) +
+  labs(
+    title = "Last Week Tonight: faster and faster!",
+    subtitle = "John Oliver's speaking pace has increased from 150 wpm to almost 180 wpm",
+    x = '',
+    y = 'Words per minute (average by episode)',
+    caption = "Based on auto-generated subtitle files."
+  ) +
+  scale_color_viridis_c(option = "viridis") +
+  scale_size_continuous(trans = "log10") +
+  coord_cartesian(ylim = c(100, 200)) +
+  scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
+  scale_y_continuous(breaks = seq(100, 200, by = 10)) +
+  hrbrthemes::theme_ipsum_gs() +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    panel.grid.minor = element_blank()
+  ) +
+  guides(
+    size = "none",
+    color = guide_colorbar(
+      title = "Segment length (in words)",
+      title.position = "top",
+      direction = "horizontal",
+      barwidth = unit(12, "cm"),
+      barheight = unit(0.2, "cm")
+    )
+  ) +
+  geom_vline(
+    xintercept = as.Date(c("2020-03-10", "2021-09-01")),
+    linetype = "dashed",
+    color = "black",
+    linewidth = 0.8
+  ) +
+  annotate(
+    "label",
+    x = as.Date("2020-12-01"),
+    y = 150,
+    label = "Covid",
+    fill = "white",
+    color = "grey45"
+  )
+
+ggsave("data/graphs/LWT_overall.png", width = 7.2, height = 5, dpi = 300)
+ggsave("data/graphs/LWT_overall.jpg", width = 7.2, height = 5)
+
+## ---- Combine syllables and pauses in one plot ----
+
+# correlation alignment errors & syllables
+cor_ae_syls <- cor.test(alignments_summ)
+alignments_summ |> 
+  ungroup() |> 
+  filter(pause_mean < 0.20) |> 
+  select(pause_mean, sps_mean, align_errors) |> 
+  cor(use = "complete.obs")
+
+
+alignments_summ |> 
+  # exclude all where the mean of pauses in an episode is greater than 200ms
+  filter(pause_mean < .20) |> 
+  select(ep_id, align_errors, pause_mean, sps_mean) |> 
+  # pivot longer to make a facet plot
+  pivot_longer(pause_mean:sps_mean,
+               names_to = "metric",
+               values_to = "value") |> 
+  # change order of metrics to have syllables first in plot
+  mutate(metric = factor(metric, levels = c("sps_mean", "pause_mean"))) |> 
+  # change from seconds (decimal) to milliseconds
+  mutate(value = if_else(metric == "pause_mean", value * 1000, value)) |>
+  # scatterplot
+  ggplot(aes(ytdate, value)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "#b73779") +
+  facet_wrap(~metric, scale = "free_y", nrow = 2,
+             labeller = as_labeller(c(sps_mean = "Syllables per second", pause_mean = "Pause duration in milliseconds"))) +
+  labs(title = "More syllables per second and shorter pauses",
+       subtitle = "Additional indicators of faster speaking rate over time\nthat are independent of show segment properties",
+       x = '',
+       y = '',
+       caption = "108 episodes with forced-alignment") +
+  scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
+  theme(panel.grid.minor = element_blank()) +
+  hrbrthemes::theme_ipsum_gs()
+
+
+
+
+
+## ---- Syllables ----
+alignments_summ |>
+  ungroup() |> 
+  filter(pause_mean < 0.20) |> 
+  ggplot(aes(x = ytdate, y = sps_mean, color = words)) +
+  geom_point(alpha = 1, size = 3) +
+  labs(
+    title = "Last Week Tonight: faster and faster!",
+    subtitle = "John Oliver's speaking pace has increased from 150 wpm to almost 180 wpm",
+    x = '',
+    y = 'Average syllables per minute',
+    caption = 'Based on subtitle files — extreme outlier due to a faulty subtitle file.'
+  ) +
+  scale_color_viridis_c(option = "viridis") +
+  scale_size_continuous(trans = "log10") +
+  coord_cartesian(ylim = c(4.25, 5.25)) +
+  scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
+  hrbrthemes::theme_ipsum_gs() +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    plot.title = element_text(hjust = 0),
+    plot.margin = margin(10, 10, 10, 0)
+  ) +
+  guides(
+    size = "none",
+    color = guide_colorbar(
+      title = "Segment length (in words)",
+      title.position = "top",
+      direction = "horizontal",
+      barwidth = unit(12, "cm"),
+      barheight = unit(0.2, "cm")
+    )
+  ) +
+  geom_vline(
+    xintercept = as.Date(c("2020-03-10", "2021-09-01")),
+    linetype = "dashed",
+    color = "black",
+    linewidth = 0.8
+  ) +
+  annotate(
+    "label",
+    x = as.Date("2020-12-01"),
+    y = 150,
+    label = "Covid",
+    fill = "white",
+    color = "grey45"
+  )
+ggsave("data/graphs/LWT_pauses.jpg", width = 7.2, height = 5, dpi = 300)
+
+## ---- Pauses ----
+alignments_summ |>
+  ungroup() |> 
+  filter(pause_mean < 0.20) |> 
+  ggplot(aes(x = ytdate, y = pause_mean, color = words)) +
+  geom_point(alpha = 1, size = 3) +
+  labs(
+    title = "Last Week Tonight: faster and faster!",
+    subtitle = "John Oliver's speaking pace has increased from 150 wpm to almost 180 wpm",
+    x = '',
+    y = 'Average pause between words in milliseconds',
+    caption = 'Based on subtitle files — extreme outlier due to a faulty subtitle file.'
+  ) +
+  scale_color_viridis_c(option = "viridis") +
+  scale_size_continuous(trans = "log10") +
+  coord_cartesian(ylim = c(0, 0.12)) +
+  scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
+  hrbrthemes::theme_ipsum_gs() +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal",
+    plot.title = element_text(hjust = 0),
+    plot.margin = margin(10, 10, 10, 0)
+  ) +
+  guides(
+    size = "none",
+    color = guide_colorbar(
+      title = "Segment length (in words)",
+      title.position = "top",
+      direction = "horizontal",
+      barwidth = unit(12, "cm"),
+      barheight = unit(0.2, "cm")
+    )
+  )
+ggsave("data/graphs/LWT_pauses.jpg", width = 7.2, height = 5, dpi = 300)
+
+
+# Correlations ------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+alignments |> 
+  ungroup() |>
+  filter(syl_per_sec < 20) |> #View()
+  ggplot(aes(x = factor(season), y = syl_per_sec)) +
+  geom_boxplot() +
+  labs(
+    x = "Season",
+    y = "Syllables per second",
+    title = "Speech rate by season"
+  ) +
+  theme_minimal()
 
 # For wpm on episodes:
 episodes <- episodes |> 
@@ -127,20 +353,45 @@ tv_vs_online1 + tv_vs_online2
 
 ## Words per minute per episode
 episodes |> 
+  filter(!is.na(wpm)) |> 
+  group_by(season) |> 
+  summarise(median(wpm), median(length))
+
+episodes |> 
   filter(!(is.na(wpm))) |> 
-  ggplot(aes(ytdate, wpm, group = season, color = season)) +
-  geom_line() +
-  geom_point(aes(size = log10(length)-4)) +
-  geom_smooth(se = F) +
-  labs(title = 'Last Week Tonight: words per minute over time',
-       subtitle = 'John Oliver has become increasingly fast-paced',
-       x = 'Year',
-       y = 'Words per minute (mean by episode)',
-       caption = 'Based on number of words per minute per subtitle file<br>(The outlier in Season 8 due to foreign language subtitle file.') +
+  select(wpm, ytdate, wrds, length) |> 
+  ggplot(aes(
+    x = ytdate,
+    y = wpm,
+    color = length,
+    #size = length
+  )) +
+  geom_point(alpha = 1, size = 2) +
+  scale_color_viridis_c(option = "viridis") +
+  scale_size_continuous(trans = "log10") +
+  labs(
+    title = "Last Week Tonight: Faster and faster!",
+    subtitle = "John Oliver's speaking pace has increased from 150 wpm to almost 180 wpm",
+    x = '',
+    y = 'Words per minute (average by episode)',
+    caption = 'Based on subtitle files — outliers due to a faulty subtitle file.'
+  ) +
   scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
-  suzR::theme_suzR() +
-  guides(colour = guide_legend(nrow = 1)) +
-  theme(legend.position = 'none')
+  hrbrthemes::theme_ipsum_gs() +
+  theme(
+    legend.position = "top",
+    legend.direction = "horizontal"
+  ) +
+  guides(
+    size = "none",
+    color = guide_colorbar(
+      title = "Segment length (in words)",
+      title.position = "top",
+      direction = "horizontal",
+      barwidth = unit(10, "cm"),
+      barheight = unit(0.2, "cm")
+    )
+  )
 
 # ...do the same with the summs per season:
 episodes |> 

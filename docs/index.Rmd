@@ -1,69 +1,230 @@
 ---
-title: "John Oliver's speech rate over time"
+title: "Has John Oliver become *more* angry?"
 date: "`r Sys.Date()`"
 output:
   html_document:
-  theme: cosmo
-code_folding: hide
-toc: yes
-toc_float:
-  collapsed: true
+    theme: flatly
+    toc: true
+    toc_float: true
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
 ---
 
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, message=FALSE, echo=TRUE, collapse=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
 
-ggplot2::theme_set(suzR::theme_suzR())
-
+# load libraries
 library(tidyverse)
+library(here)
 
-alignments <- read_tsv('../data/alignments.csv')
-episodes <- read_tsv('../data/episodes.csv')
+# load raw data
+alignments <- read_tsv(here("data", "alignments.csv"))
+episodes <- read_tsv(here("data", "episodes.csv"))
 
+# set theme
+theme_set(hrbrthemes::theme_ipsum_gs())
 ```
 
 ### The mystery
 
-I recently stumbled across an old John Oliver episode from Season 1. The pace of the episode was so noticeably slower as if I had YouTube on half speed. My interest was piqued: has John Oliver become more fast-paced over time?
+I recently stumbled across an old John Oliver episode from Season 1. The pace of that episode was *noticeably* slower — so slow in fact that I thought I had YouTube on half speed.
 
-That's a rather straightforward corpus linguistic task: we can measure speech rate in words per minute or syllables per second, and look at the average duration of pauses - metrics which will probably approximate John's speech style space over time.
+**My interest was piqued: has John Oliver’s speech become more fast-paced over time?**
+
+(For what it's worth — for social media attention I {c|sh}ould have asked **"Has John become more *angry*?"** — but I'm a data scientist, not a loudmouthed journalist, so we'll leave *that* inference to someone else.)
+
+### The short story
+
+Yes, it has. And by *a lot*.
+
+Over the 11 seasons in this data set, John Oliver has increased from an average of **150 words per minute to almost 180**.
+
+For comparison: 100—120 words per minute is [generally considered](https://virtualspeech.com/blog/average-speaking-rate-words-per-minute) as "slow", 120—150 as "conversational", and from 200 and up, we're talking auctioneer-like style. A speaking rate of 160 is a threshold for "comfortable" hearing and processing of information — there is, after all, a recommendation to keep presentations to between 100 an 150 words per minute on average
+
+
+![](../data/graphs/LWT_overall.png)
+In case anyone's wondering: generally, starting the y-axis at anything but 0 is considered bad and deceptive practice. However, 100 is quite a natural starting point since speaking rate does not have it's natural default at 0.
+
+**The key insights:**
+
+* Significant increase in speaking rate over time
+* During Covid - where John broadcast without an audience - the average is higher. This probably reflects the absence of interruptions by audience reactions; it otherwise continues the overall trend.
+* The length of the segments over which the speaking rate was calculated *also* increases over time — it is possible that the increase in speaking rate is primarily due to artifacts in the data.
+
+### The (slightly) longer story
+
+**Task**: In general, dealing with questions of this type is a rather straightforward corpus linguistic task: we can measure the speaking rate in **words per minute** — simply counting the words and divide by duration of the segment. With more advanced NLP tools, we can also measure **syllables per second** and **pauses between words**.
+
+**Challenge**: How do we deal with artifacts in the data that are unrelated to speech style? For example, just by looking at the increase of length of a segment, it could be that breaks or intro/outros are simply less influential in longer segments and thus contribute to a relative increase in speaking rate. It could also be that speech from *other* people simply became less frequently featured over time.
+
+Let’s see.
 
 ### The data
 
-From a [list of main segments of Last Week Tonight](https://en.wikipedia.org/wiki/List_of_Last_Week_Tonight_with_John_Oliver_episodes) and their YouTube links, I fetched the audio, auto-generated subtitles, and some meta data such as file duration and views (using [yt-dlp](https://github.com/yt-dlp/yt-dlp)). [Gentle](https://github.com/lowerquality/gentle) aligns the audio to the subtitles and determine the beginning and end of each word. Gentle was the only forced-aligner I could find that works reasonably reliably on files larger than a few seconds - while this comes at the cost of accuracy, given the amount of data for the question to be answered, it's a workable trade-off.
+Using [yt-dlp](https://github.com/yt-dlp/yt-dlp), I fetched the audio, the auto-generated subtitles and file meta data such as file duration from a [list of 314 episodes of Last Week Tonight](https://en.wikipedia.org/wiki/List_of_Last_Week_Tonight_with_John_Oliver_episodes) from the first 11 seasons. The data is based on the *main segments* of each episode, which range in duration from 6 to 34 minutes.
 
-Two issues: First, John Oliver frequently features clips with speech from other people, which would have to be removed. To assess, I manually filtered other people's text from the files for 20 episodes, and, if anything, the reported effects would be more pronounced, hence I decided using all data is good enough for the current purpose, and treat other people's speech as noise - as lots of data tends to make such problems be much less influential. Second, 
+*Note: To assess if other people's contributions affected the counts, I manually checked about two dozen transcripts. They did in fact change the numbers, but in the other direction. That is, if we excluded all non-John data, his speaking rate would be even **higher**. But importantly, they did not change the overall pattern.*
 
-```{r inspect}
+#### Simple method: Episode-level
+
+For the graph above, I used the simple methods by words per minute, such as in this table. Not all main segments are online, or subtitles and meta data is not available (the `NA` in the table):
+
+```{r episodes_inspect, echo=TRUE, collapse=TRUE}
+# subset episodes, rename columns for readability, and determine wpm speech rate
+episodes_clean <- episodes |> 
+  select(season, episode_total, main_segment, duration, length, wrds) |> 
+  rename(Season = season,
+         Episode = episode_total,
+         Title = main_segment,
+         Duration = duration,
+         Words = wrds) |> 
+  mutate(`Words per minute` = Words/(length/60))
+
+# output table
+episodes_clean |> 
+  select(-length) |> 
+  head(10) |> 
+  knitr::kable(digits = 0, caption = "Episode list for the first 10 episodes in Season 1.") |> 
+  kableExtra::kable_styling()
+```
+
+#### Advanced method: Word-level
+
+If we go to the **word-level**, we can add more weight to the argument that the increased speaking rate is in fact not an artifact of text composition or other data quality issues.
+
+For a random third subset of 108 segments, I used [Gentle](https://github.com/lowerquality/gentle) to force-align the audio file with the text. This determines the beginning and end of each word that allows us to measure the duration of each word.
+
+Gentle works reasonably well on audio files longer than a few seconds — while it comes at the cost of accuracy, patterns should be clear enough in over 370,000 measured words.
+
+The packacke {nsyllables} counts the syllables per word.
+
+```{r alignments_transform, echo=TRUE, collapse=TRUE}
+# adds duration, pauses, medians
+alignments <- alignments |> 
+  group_by(ep_id) |> 
+  # normalize 
+  mutate(beg = round(beg, 4),
+         end = round(end, 4)) |> 
+  mutate(pause = lead(beg) - end,
+         dur = end - beg) |> 
+  mutate(syl = nsyllable::nsyllable(word)) |> 
+  mutate(sps = (1/dur)*syl) |> 
+  ungroup()
+```
+
+This table illustrates this for Episode 18 in Season 8, ["Housing Discrimination"](https://youtu.be/_-0J49_9lwc?si=jkoQM6E-U-Rec9mZ):
+
+``` {r alignments_inspect, echo=TRUE, collapse=TRUE}
+# illustrate for one episode
 alignments |> 
   filter(ytid == '_-0J49_9lwc') |> 
-  head(8) |> 
-  knitr::kable(digits = 3, caption = "Forced-alignment for one file")
-```
-```{r}
-# For wpm on episodes:
-episodes <- episodes |> 
-  mutate(viewers_m = viewers * 1000000,
-         wpm = wrds/length * 60,
-         spm = syls/length,
-         vlr = likes/views,
-         vcr = comms/views)
+  # column names that are better to read
+  rename(Date = ytdate, 
+         Word = word,
+         Recognised = recog,
+         `No of syllables` = syl,
+         Begin = beg,
+         End = end,
+         Duration = dur,
+         `Syllables per second` = sps,
+         `Pause to next word` = pause) |> 
+  select(Word:End, Duration, `Pause to next word`, `No of syllables`, `Syllables per second`) |> 
+  head(12) |> 
+  knitr::kable(digits = 2, caption = "Forced-alignment for S08E18, 'Housing Discrimination'. ")
 
-## TV viewers per episode
-episodes |> 
-  filter(!is.na(viewers_m)) |> 
-  select(ytdate, ep_id, season, viewers_m) |> 
-  ggplot(aes(ytdate, viewers_m)) +
-  geom_point(aes(color = season)) +
-  #geom_line(group = 1) +
-  geom_smooth(method = 'loess') +
-  labs(title = 'Last Week Tonight: Popularity',
-       subtitle = 'TV viewer rise and decline',
-       x = 'Year',
-       y = 'TV viewers (millions)') +
+```
+
+```{r alignments_summary}
+
+# each segment's summary
+alignments_summ <- alignments |> 
+  # filter durations of less than 0.2 (likely alignment errors):
+  filter(dur > 0.19 | is.na(dur)) |> 
+  group_by(season, ep_id, ytdate, ytid) |> 
+  summarize(words = n(),
+            sum_na = sum(is.na(beg)),
+            align_errors = sum_na/words,
+            sps_mean = mean(sps, na.rm = T),
+            pause_mean = mean(pause, na.rm = T),
+            .groups = "drop_last") |> 
+  ungroup()
+```
+
+
+
+```{r alignments_plot, fig.height = 7, fig.width = 10, message = FALSE}
+alignments_summ |> 
+  # exclude all where the mean of pauses in an episode is greater than 200ms
+  filter(pause_mean < .20) |> 
+  select(ytdate, ep_id, align_errors, pause_mean, sps_mean) |> 
+  # pivot longer to make a facet plot
+  pivot_longer(pause_mean:sps_mean,
+               names_to = "metric",
+               values_to = "value") |> 
+  # change order of metrics to have syllables first in plot
+  mutate(metric = factor(metric, levels = c("sps_mean", "pause_mean"))) |> 
+  # change from seconds (decimal) to milliseconds
+  mutate(value = if_else(metric == "pause_mean", value * 1000, value)) |>
+  # scatterplot
+  ggplot(aes(ytdate, value)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "#b73779") +
+  facet_wrap(~metric, scale = "free_y", #nrow = 2,
+             labeller = as_labeller(c(sps_mean = "Syllables per second", pause_mean = "Pause duration in milliseconds"))) +
+  labs(title = "More syllables per second and shorter pauses",
+       subtitle = "Additional indicators of faster speaking rate over time\nthat are independent of show segment properties",
+       x = '',
+       y = '',
+       caption = "108 episodes with forced-alignment") +
   scale_x_date(date_breaks = '1 year', date_labels = "%Y") +
-  guides(colour = guide_legend(nrow = 1))
+  theme(panel.grid.minor = element_blank())
+```
+
+Now combine with episode data
+
+```{r correlate_epi-wrd, fig.height = 10, fig.width=8}
+comb_dat <- episodes |> 
+  select(ep_id, season, episode_total, period, ytdate, wrds, length) |> 
+  left_join(alignments_summ |> select(ep_id, sps_mean, pause_mean), join_by("ep_id")) |> 
+  mutate(wpm = wrds/length*60, .after = length) |> 
+  filter(!is.na(ytdate)) |> 
+  # episode within
+  group_by(season) |> 
+  mutate(ep_within = row_number()) |> 
+  mutate(period = factor(period, levels = c("precovid", "covid", "post_covid"))) |> 
+  ungroup()
+
+# make model data
+mod_dat <- comb_dat |>
+  select(ytdate, ep_within, period, wrds, wpm, length, sps_mean) |> 
+  mutate(ytdate_num = as.numeric(scale(as.numeric(ytdate))),
+         length = as.numeric(scale(length)),
+         ep_within = as.numeric(scale(ep_within)))
+
+# simple linear model
+mod_wpm <- lm(wpm ~ length + ep_within + period + ytdate_num, data = mod_dat)
+summary(mod_wpm)
+
+performance::model_performance(mod_wpm)
+performance::check_model(mod_wpm)
+performance::check_heteroscedasticity(mod_wpm)
+performance::check_collinearity(mod_wpm)
+
+```
+
+
+### Predictive modelling
+
+While by now we have a pretty good indication that John's speaking rate has in fact increased — corroborated of course by a pure auditory impression alone — we can use this data set to illustrate the advantage of linear regression. Because at face value, all we have in data terms is: "increase in words per minute" **and** "increase in amount of text", so technically, we still don't know which causes which.
+
+In theory, we could be modelling either `words per minute` or `syllables per second` — the latter has more data, but is also vastly more complex to perform, and, if using the aggregate or average, has only about a third of the data points we have for `words per minute`. The third option, `word duration` comes with a whole other complexity of word properties that we'll leave for today.
+
+
+
+```{r modelling}
+
 
 ```
 
