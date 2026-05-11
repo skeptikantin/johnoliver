@@ -2,6 +2,8 @@
 
 Data & analysis of changes in John Oliver's speech rate over time.
 
+Source are 314 episodes by the end of Season 11 (2024) - based on the main segments ("main story") that are available on the show's YouTube channel.
+
 See the [write-up](https://skeptikantin.github.io/johnoliver/).
 
 ## Data source, processing & availability
