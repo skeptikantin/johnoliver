@@ -44,17 +44,16 @@ Has John's speed become faster?
 
 Yes, it has. And by *a lot*.
 
-In the first 11 seasons, John's speech has accelerated from an average of **150 to almost 180 words per minute**.
+Over the first 11 seasons, John's speech has accelerated from an average of **150 to almost 180 words per minute**.
+
+![](../data/graphs/LWT_overall.png)
+*If anyone's rightfully and critically wondering: yes, starting the y-axis above 0 can be bad and deceptive practice. However, 100 wpm is the far more natural starting point for speaking pace than 0 — or at least I should hope so! In other words, the y-axis starts with "slow speech".*
 
 For comparison: **100—120 wpm** is [generally considered](https://virtualspeech.com/blog/average-speaking-rate-words-per-minute) as "slow", **120—150** as "conversational", and by **200+**, we're talking auctioneer-like style. A speaking rate of 160 is a threshold for comfortably hearing and processing complex information. There is, after all, a recommendation to keep presentations to between 100—150 wpm.
 
 John's increase is **really** noticeable — and let's keep in mind that it is measured across comedy segments with considerably more space taken by audience reactions than your average TED talk or business presentation.
 
 Moving on — let's dive straingt in to our main story!
-
-
-![](../data/graphs/LWT_overall.png)
-*If anyone's rightfully and critically wondering: yes, starting the y-axis above 0 can be bad and deceptive practice. However, 100 wpm is the far more natural starting point for speaking pace than 0 — or at least I should hope so! In other words, the y-axis starts with "slow speech".*
 
 ---
 
@@ -338,7 +337,7 @@ Whether emotion of this kind can be measured in this data? May be. It'll probabl
 
 This code generated the graph at the beginning:
 
-```{r main graph}
+```{r main graph, echo=TRUE}
 # For wpm on episodes:
 episodes <- episodes |> 
   mutate(viewers_m = viewers * 1000000,
