@@ -356,8 +356,8 @@ episodes |>
   ggplot(aes(ytdate, wpm, color = length)) +
   geom_point(alpha = 1, size = 3) +
   labs(
-    title = "Last Week Tonight: faster! angrier?",
-    subtitle = "John Oliver's pace has increased from 150 to almost 180 words per minute",
+    title = "Last Week Tonight's John Oliver: faster! angrier?",
+    subtitle = "John's pace has increased from 150 to almost 180 words per minute",
     x = '',
     y = 'Words per minute',
     caption = "Each dot one episode; based on 314 auto-generated subtitle files."
