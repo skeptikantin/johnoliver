@@ -91,13 +91,12 @@ episodes |>
   select(wpm, ytdate, wrds, length, period) |> 
   ggplot(aes(ytdate, wpm, color = length)) +
   geom_point(alpha = 1, size = 3) +
-  #geom_smooth(aes(group = period), se = FALSE) +
   labs(
-    title = "Last Week Tonight: faster and faster!",
-    subtitle = "John Oliver's speaking pace has increased from 150 wpm to almost 180 wpm",
+    title = "Last Week Tonight: faster!",
+    subtitle = "John Oliver's pace has increased from 150 to almost 180 words per minute",
     x = '',
-    y = 'Words per minute (average by episode)',
-    caption = "Based on auto-generated subtitle files."
+    y = 'Words per minute',
+    caption = "Each dot one episode; based on 299 auto-generated subtitle files."
   ) +
   scale_color_viridis_c(option = "viridis") +
   scale_size_continuous(trans = "log10") +
