@@ -211,9 +211,9 @@ It is worth noting that (longer) pauses between words generally occur (i) at phr
 
 ---
 
-If we now average speed and pauses over all words in each segment, we get a visual confirmation that that John's speech — and arguably the show's pace in general — have become much faster.
+If we now average speed and pauses over all words in each segment, we get a visual confirmation that John's speech — and arguably the show's pace in general — have become much faster.
 
-**Over time, words are spoken more quickly and there are shorter pauses between the words:**
+**Over time, words are spoken more quickly and there are shorter pauses between words:**
 
 ```{r alignments_summary, fig.height = 6, fig.width = 8}
 
@@ -275,7 +275,7 @@ Alternatively, if we predict the aggregate `syllables per seconds` at the episod
 
 From the original question, it is clear which factors to include: we want to predict `wpm` as a proxy of speaking rate from `season` as a proxy of time, controlled for `length` of segments.
 
-But for the sake of illustration, let's include a few additional predictors. They also explain why some files were excluded for the analysis:
+But for the sake of illustration, let's discuss a few additional predictors. They also explain why some files were excluded for the analysis:
 
 * `ep_within` — the episode number within a season — for model stability, we exclude 6 segments from the only season with those high number of episodes,
 * `align_errors` — measures the proportion of words in an episode which Gentle could not align properly, and,
@@ -284,7 +284,7 @@ But for the sake of illustration, let's include a few additional predictors. The
 **A correlation matrix shows:**
 
 1. The factors of interest — `wpm`, `length` and `season` — are all expectedly highly correlated.
-2. Alignment errors (`align errors`) and pauses (`pause_mean`) are strongly correlated. This is almost entirely due to a handful of files with extreme alignment errors — leading to 30s+ pauses. I thus remove(d) segments with an implausibly high average pause of over 200ms.
+2. Alignment errors (`align errors`) and pauses (`pause_mean`) are strongly correlated. This is almost entirely due to a handful of files with extreme alignment errors — leading to 30s+ pauses. I thus remove(d) a handful of segments with an implausibly high average pause of over 200ms.
 3. The number of an episode within a season is not correlated with any other variable. We use this variable to "test" if speech rate is associated with a kind of "fluency" effect across a season. Conceptually speaking, there is no reason to believe that this should be the case (cuz, why?).
 
 ```{r correlate_epi-wrd, fig.height = 5, fig.width=5, message=FALSE, warning=FALSE}
@@ -382,19 +382,21 @@ Note: for those more versed in linear models, the variance explained is moderate
 
 For what it's worth: running a comparable model on the smaller sample with the more fine-grained predictors `syllables per second` or `pause_mean` leads to an identical interpretation: substantially faster-paced speech over time, and no effect of segment length.
 
+Hence, we go with the simpler model that is easier to understand and more intuitive to interpret.
+
 ## Concluding remarks
 
 Overall, the auditory impression is confirmed.
 
-The actual numbers — 25 wpm more in 2014 than in 2025 — need to be taken with a grain of salt. Let's not forget that this average is measured across an entire segment, including intros/outros, audience reactions, pauses for dramatic effect, or the segments of other people. In general, we assume that this 'noise' is relatively constant across segments (or episodes, probably), but many of the mentioned factors probably 'drag' the average down a bit when compared to the speaking rates of other people or contexts.
+The actual numbers — 25 wpm more in 2024 than in 2014 — need to be taken with a grain of salt. Let's not forget that this average is measured across an entire segment, including intros/outros, audience reactions, pauses for dramatic effect, or the segments of other people. In general, we assume that this 'noise' is relatively constant across segments (or episodes, probably), but many of the mentioned factors probably 'drag' the average down a bit when compared to the speaking rates of other people or contexts.
 
 As for the reasons why we see John's pattern — pure speculation, and not my area of expertise at all.
 
-An natural reaction is that John is indeed also *angrier* — we intuitively associate emotional speech with greater speed. And there is after all a significant amount of stuff that's been getting progressively worse since 2014.
+An natural reaction is that John is indeed also *angrier* — we intuitively associate emotional speech with greater speed. And there is after all a significant amount of stuff that's been getting progressively more worth being angry about since 2014.
 
-Whether emotion of this kind can be measured in this data? May be. It'll probably need some form of pitch analysis, and a skilled computational phonetician to get something out of audio files of very poor quality.
+Whether emotion of this kind can be measured in this data? May be. It'll probably need some form of pitch analysis and a skilled computational phonetician to get something out of audio files of very poor quality.
 
-A topic-modelling analysis might be interesting to answer whether more political segment topics (but how define?) associated with more emotional speech styles. The obvious issue: all of John's stories are somewhat political and arguably equally enraging. Exploring the patterns — see the interactive plot below — doesn't seem to suggest that it has anything to do with the topic. But that'd be for another day.
+A topic-modelling analysis might be interesting to answer whether more political segment topics (but how define?) are associated with more emotional speech styles. The obvious issue: all of John's stories are somewhat political and equally enraging. Exploring the patterns — see the interactive plot below — doesn't seem to suggest that it has anything to do with the topic. But that'd be for another day.
 
 ## Appendix
 
