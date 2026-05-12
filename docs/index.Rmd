@@ -116,7 +116,7 @@ But let’s see.
 
 Using [yt-dlp](https://github.com/yt-dlp/yt-dlp), I fetched the audio, the auto-generated subtitles and meta data such as file duration, viewers, likes and comments from a [list of 314 episodes of Last Week Tonight](https://en.wikipedia.org/wiki/List_of_Last_Week_Tonight_with_John_Oliver_episodes).
 
-The data is only from the *main segments* of each episode, which range in duration from 6 to 34 minutes. Until last year, those were the only dose of John available to most the outside world without a TV or cable subscription. (I fetched all data in late 2024.)
+The data is only from the *main segments* of each episode, which range in duration from 6 to 34 minutes. Until last year, those were the only doses of John available to most people in the outside world without a TV or cable subscription. (I fetched all data in late 2024.)
 
 More information and the data is [in the project's Github repo](https://github.com/skeptikantin/johnoliver).
 
@@ -124,7 +124,7 @@ More information and the data is [in the project's Github repo](https://github.c
 
 ### Episode-level (simple)
 
-For the graph above, I used the simplest possible method, measuring speed in words per minute. `NA` in a row indicates that the main segments or auto-generated subtitles were not available on YouTube.
+For the graph above, I used the simplest possible method, measuring speed in words per minute. `NA` in a row indicates that either the main segment or the auto-generated subtitles were unavailable.
 
 The measurement *Words per minute* is simply the number of words per episode divided by the length of the episode, here expressed in seconds to make calculations easier:
 
@@ -158,9 +158,9 @@ At the **word-level**, we can exclude some of the artefacts that affect the epis
 
 So, for a random subset of 108 segments, I used [Gentle](https://github.com/lowerquality/gentle) to force-align the audio with the subtitles. Gentle tries to determine the beginning and the end of each word, from which we can calculate its duration.
 
-Gentle works reasonably well on audio files longer than a few seconds. This comes at the cost of accuracy, but patterns should be clear enough for over 370,000 data points. Gentle also returns all time stamps in centiseconds (1/100th of a second), whereas small-data "proper phonetics" usually works in milliseconds.
+Gentle is the only forced-alinger that works reasonably well on audio files longer than a few seconds. This comes at the cost of accuracy, but patterns will be clear enough for over 370,000 data points. Gentle also returns all time stamps in centiseconds (1/100th of a second), whereas small-data "proper phonetics" usually works in milliseconds.
 
-The package {nsyllables} counts the syllables per word to give us syllables per second of that particular word. Pauses are calculated as the difference of the end of one word and the beginning of the next, and are `NA` where the adjacent word could not be aligned.
+The package {nsyllables} counts the syllables to give us syllables per second of that particular word. Pauses are calculated as the difference between the end of one word and the beginning of the next, and are `NA` where Gentle could not align the next word.
 
 This table illustrates this process for Episode 18 in Season 8, [*Housing Discrimination*](https://youtu.be/_-0J49_9lwc?si=jkoQM6E-U-Rec9mZ):
 
@@ -203,16 +203,15 @@ alignments |>
 
 Explanations:
 
-* **Recognised** indicates if Gentle was successful in locating the word in the audio file.
-* Where **NA**, that's counted as an alignment error — no further metrics can be determined.
-* **Syllables per second** is a word-level metric — number of syllables divided by the word duration.
-* The main segments on YouTube generally begin with a shortened intro of 4s — this artifact will probably be of negligible effect in the grander scheme of things.
+* **Recognised** indicates if Gentle was successful in locating the word in the audio file. If **NA**, that's an alignment error — no further metrics can be determined.
+* **Syllables per second** is a word-level metric — number of syllables divided by the word's duration.
+* The main segments on YouTube almost always begin with a 4s version of the show's long intro. Hence, this artifact probably only has a negligible effect.
 
-It is worth noting that (longer) pauses between words generally occur (i) at phrase boundaries, like the "spoken" comma you'd expect after *specifically*, or (ii) for dramatic effect, like before *land* — both are suitably [clearly audible in segment](https://youtu.be/_-0J49_9lwc?si=jkoQM6E-U-Rec9mZ).
+It is worth noting that (longer) pauses between words generally occur (i) at phrase boundaries, much like a "spoken" comma you'd expect after *specifically*, or (ii) for dramatic effect, like before *land* — both are [clearly audible in the segment](https://youtu.be/_-0J49_9lwc?si=jkoQM6E-U-Rec9mZ).
 
 ---
 
-If we now average speed and pauses over all the words in each segment, we get a visual confirmation that that John's speech — and arguably the show's pace in general — have become much faster.
+If we now average speed and pauses over all words in each segment, we get a visual confirmation that that John's speech — and arguably the show's pace in general — have become much faster.
 
 **Over time, words are spoken more quickly and there are shorter pauses between the words:**
 
@@ -260,20 +259,19 @@ alignments_summ |>
   theme(panel.grid.minor = element_blank())
 ```
 
-Of course in faster-paced speech, pauses between words also get shorter. That being said — i
-In connected speech, pauses between words is usually 0 at any speech level, especially at the phrase level. Therefore, an average decrease from 120ms to 90ms does suggest John is concatenating phrases and sentences more quickly *overall*, adding to the big-picture impression of a faster pace.
+Of course in faster-paced speech, pauses between words also get shorter. That being said — in connected speech, pauses between words are usually 0 at any speech rate, especially within phrases. Therefore, an average decrease from 120ms to 90ms does suggest John is combining phrases and sentences increasingly more quickly, adding to the big-picture impression of the show's faster pace *in general*.
 
 In data terms, it is worth pointing out that the linear regression line for syllables per word (as shown here in pink (`method = "lm"`) is near identical to a line from a method that would detect non-linear relationships (i.e., `method = "gam"`). Hence, we can turn to a linear regression as a suitable modelling technique.
 
 ## Predictive modelling
 
-Of course, by now we have a pretty solid picture that the initial auditory impression was indeed correct. Nonetheless, we can use this data set to illustrate the advantage of a linear regression. Because at face value, all we have in data terms is this: "an increase in words per minute" **and** "an increase in amount of text". In other words, technically, we don't know if the increase in *words per minute* is an artifact of the *increase in amount of text*.
+Of course, by now we have a pretty solid picture that the initial auditory impression was indeed correct. Nonetheless, we can use this data set to illustrate the advantage of a linear regression. Because at face value, all we have in data terms is this: "an increase in words per minute" **and** "an increase in amount of text". In other words, we don't know if the increase in *words per minute* is an artifact of the *increase in amount of text*.
 
 We could model (or predict) either `words per minute` or `syllables per second`. The latter is more fine-grained, thus truer to the original question, and has vastly more data points to work with. However, the word-level is also vastly more complex to model, as it comes with additional complications. For instance, we would have to control for word properties and/or the words themselves (of which there are over 22,000 types). That's for another day — or for another expert.
 
 Alternatively, if we predict the aggregate `syllables per seconds` at the episode-level, we only have roughly a third of the data points than we have for `words per minute`.
 
-### Correlations
+### Correlations & predictors
 
 From the original question, it is clear which factors to include: we want to predict `wpm` as a proxy of speaking rate from `season` as a proxy of time, controlled for `length` of segments.
 
@@ -286,8 +284,8 @@ But for the sake of illustration, let's include a few additional predictors. The
 **A correlation matrix shows:**
 
 1. The factors of interest — `wpm`, `length` and `season` — are all expectedly highly correlated.
-2. Alignment errors (`align errors`) and pauses (`pause_mean`) are strongly correlated. This is almost entirely due to a handful of files with extreme alignment errors — leading to 30s+ pauses. We remove(d) segments with an implausibly high average pause of over 200ms. It also makes these two variables statistically less suitable. 
-3. The number of an episode within a season is not correlated with any other variable. We use this variable to "test" if speech rate is associated with a kind of "training" or "fluency" effect across a season. Conceptually speaking, there is no reason to believe that this should be a factor (cuz, why?).
+2. Alignment errors (`align errors`) and pauses (`pause_mean`) are strongly correlated. This is almost entirely due to a handful of files with extreme alignment errors — leading to 30s+ pauses. I thus remove(d) segments with an implausibly high average pause of over 200ms.
+3. The number of an episode within a season is not correlated with any other variable. We use this variable to "test" if speech rate is associated with a kind of "fluency" effect across a season. Conceptually speaking, there is no reason to believe that this should be the case (cuz, why?).
 
 ```{r correlate_epi-wrd, fig.height = 5, fig.width=5, message=FALSE, warning=FALSE}
 # combine episode- and word-level data
@@ -375,7 +373,7 @@ Since `season` was not numerically transformed, we can interpret its coefficient
 
 
 ```{r callout_conclusion}
-callout("On average, with every <strong>season</strong>, John's speaking rate increased by <strong>2.3 words per minute</strong>. Since we have 11 seasons, that is a rather intuitive statistical confirmation of increase from <strong>150</strong> to almost <strong>180 wpm</strong> which we eye-balled off the scatterplot.")
+callout("On average, with every <strong>season</strong>, John's speaking rate increased by <strong>2.3 words per minute</strong>. Since we have 11 seasons, that is a rather intuitive statistical confirmation of the increase from roughly <strong>150</strong> to almost <strong>180 wpm</strong> that we eye-balled off the scatterplot in the beginning.")
 ```
 
 ---
