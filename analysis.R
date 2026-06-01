@@ -69,6 +69,19 @@ episodes <- episodes |>
 
 # Step 4: Visualizations --------------------------------------------------
 
+## viewers over time
+episodes |> 
+  mutate(TV = views,
+         YouTube = viewers*1000000) |> 
+  filter(!is.na(YouTube)) |> 
+  select(ytdate, TV, YouTube) |> 
+  pivot_longer(TV:YouTube, names_to = "viewers", values_to = "views") |> 
+  ggplot(aes(ytdate, views)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~viewers, scale = "free_y") +
+  scale_x_date(date_breaks = '1 year', date_labels = "%Y")
+  
 ## Words per minute per episode
 episodes |> 
   filter(!is.na(wpm)) |> 
