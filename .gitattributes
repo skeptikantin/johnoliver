@@ -1,1 +1,4 @@
 *.Rmd linguist-language=R
+*.html linguist-detectable=false
+*.css linguist-detectable=false
+*.log linguist-detectable=false
